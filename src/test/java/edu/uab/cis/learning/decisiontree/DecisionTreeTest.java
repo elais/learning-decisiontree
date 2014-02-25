@@ -17,13 +17,13 @@ public class DecisionTreeTest {
     trainingData.add(LabeledFeatures.ofStrings(1));
     // train the classifier
     DecisionTree<Integer, Integer, String> classifier = new DecisionTree<>(trainingData);
-    // test the classifier
+    // test that the classifier returns the most frequent class
     Features<Integer, String> testDatum = Features.of();
     Assert.assertEquals(Integer.valueOf(1), classifier.classify(testDatum));
   }
 
   @Test
-  public void testSingleSplit() {
+  public void testFullyPredictiveFeature() {
     // assemble training data
     List<LabeledFeatures<String, Integer, Integer>> trainingData = new ArrayList<>();
     trainingData.add(LabeledFeatures.ofIntegers("A", 0, 0));
@@ -31,10 +31,6 @@ public class DecisionTreeTest {
     trainingData.add(LabeledFeatures.ofIntegers("B", 0, 1));
     // train the classifier
     DecisionTree<String, Integer, Integer> classifier = new DecisionTree<>(trainingData);
-    // test on the training data
-    Assert.assertEquals("A", classifier.classify(Features.of(0, 0)));
-    Assert.assertEquals("A", classifier.classify(Features.of(1, 0)));
-    Assert.assertEquals("B", classifier.classify(Features.of(0, 1)));
     // test that the classifier split on the second feature
     Assert.assertEquals("B", classifier.classify(Features.of(1, 1)));
   }
