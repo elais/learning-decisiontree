@@ -40,29 +40,29 @@ The goal of this assignment is to give you some experience implementing a superv
 
 ## Implement your part of the code
 
-Your task is to implement the constructor and `classify` method in `DecisionTree.java`. All your code should go into `DecisionTree.java`, and you should not modify any other files.
+Your task is to implement the constructor and `classify` method in `DecisionTree.java`. All your code should go into `DecisionTree.java`, and **you should not modify any other files**.
 
 In the constructor, a decision tree should be created as follows:
 
-1. If all examples have the same label, a leaf node is created.
-2. If no features are remaining, a leaf node is created.
-3. Otherwise, the feature F with the highest information gain is identified. A branch node is created where for each possible value V of feature F:  
-   1. The subset of examples where F=V is selected.
-   2. A decision (sub)tree is recursively created for the selected examples. None of these subtrees nor their descendants are allowed to branch again on feature F.
+1.  If all examples have the same label, a leaf node is created.
+2.  If no features are remaining, a leaf node is created.
+3.  Otherwise, the feature F with the highest information gain is identified. A branch node is created where for each possible value V of feature F:
+    1.  The subset of examples where F=V is selected.
+    2.  A decision (sub)tree is recursively created for the selected examples. None of these subtrees nor their descendants are allowed to branch again on feature F.
 
 In `classify`, a prediction for a new example E should be made as follows:
 
-1. For a leaf node where all examples have the same label, that label is returned.
-2. For a leaf node where the examples have more than one label, the most frequent label is returned.
-3. For a branch node based on a feature F, E is inspected to determine the value V that it has for feature F.
-   1. If the branch node has a subtree for V, then example E is recursively classified using the subtree.
-   2. If the branch node does not have a subtree for V, then the most frequent label for the examples at the branch node is returned.
+1.  For a leaf node where all examples have the same label, that label is returned.
+2.  For a leaf node where the examples have more than one label, the most frequent label is returned.
+3.  For a branch node based on a feature F, E is inspected to determine the value V that it has for feature F.
+    1.  If the branch node has a subtree for V, then example E is recursively classified using the subtree.
+    2.  If the branch node does not have a subtree for V, then the most frequent label for the examples at the branch node is returned.
 
 ## Test your code
 
 1.  Re-run the tests:
 
-        mvn test
+        mvn clean test
 
     You should now see a message like:
 
@@ -70,7 +70,7 @@ In `classify`, a prediction for a new example E should be made as follows:
         [INFO] BUILD SUCCESS
         [INFO] ------------------------------------------------------------------------
 
-    Your code is now passing the tests that were given to you. This is a good sign, but note that a successful `mvn test` does not guarantee you full credit on an assignment. I will run extra tests on your code when grading it.
+    Your code is now passing the tests that were given to you. This is a good sign, but note that **a successful `mvn test` does not guarantee you full credit on an assignment**. I will run extra tests on your code when grading it.
 
 ## Submit your assignment
 
