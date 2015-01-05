@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class DecisionTreeTest {
 
-  @Test
+  @Test(timeout = 10000)
   public void testMostFrequentClass() {
     // assemble training data
     List<LabeledFeatures<Integer, Integer, String>> trainingData = new ArrayList<>();
@@ -22,7 +22,7 @@ public class DecisionTreeTest {
     Assert.assertEquals(Integer.valueOf(1), classifier.classify(testDatum));
   }
 
-  @Test
+  @Test(timeout = 10000)
   public void testFullyPredictiveFeature() {
     // assemble training data
     List<LabeledFeatures<String, Integer, Integer>> trainingData = new ArrayList<>();
