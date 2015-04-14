@@ -1,6 +1,6 @@
 package edu.uab.cis.learning.decisiontree;
 
-import java.util.Collection;
+import java.util.*;
 
 /**
  * A decision tree classifier.
@@ -36,8 +36,21 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
    *          The training examples, where each example is a set of features and
    *          the label that should be predicted for those features.
    */
+  private Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData;
+  private Map<FEATURE_NAME, Boolean> feature_names;
+  private Set<LABEL> labels;
   public DecisionTree(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData) {
-    // TODO
+    this.trainingData = trainingData;
+    Iterator<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> it = trainingData.iterator();
+    while(it.hasNext()){
+      LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> next = it.next();
+      feature_names.addAll(next.getFeatureNames());
+      labels.add(next.getLabel());
+    }
+
+
+
+
   }
 
   /**
@@ -67,4 +80,20 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
     // TODO
     return null;
   }
+
+  public Double calculateEntropy(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> data){
+    double entropy = 0;
+
+    if(data.size() == 0){
+      //do nothing
+      return 0.0;
+    }
+
+
+
+
+    return null;
+
+  }
 }
+
