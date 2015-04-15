@@ -1,5 +1,8 @@
 package edu.uab.cis.learning.decisiontree;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+
 import java.util.*;
 
 /**
@@ -40,37 +43,45 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
   private Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData;
   private List<LABEL> labels;
   private Map<FEATURE_NAME, Set<FEATURE_VALUE>> value_map;
-  private Map<FEATURE_NAME, List<FEATURE_VALUE>> examples;
   private Node root;
   private Set<FEATURE_NAME> features;
   private Set<LABEL> labelSet;
+  private Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples;
   public DecisionTree(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData) {
     value_map = new HashMap<>();
     features = new HashSet();
-    examples = new HashMap<>();
     labelSet = new HashSet();
     labels = new LinkedList<>();
     root = new Node(null);
+
+
+
     for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData){
       features.addAll(lf.getFeatureNames());
       labels.add(lf.getLabel());
     }
+
+    examples = HashBasedTable.create(labels.size(), features.size());
     Iterator<FEATURE_NAME> nameIterator = features.iterator();
-    while(nameIterator.hasNext()){
+    while(nameIterator.hasNext()) {
       Set<FEATURE_VALUE> valueSet = new HashSet<>();
       LinkedList<FEATURE_VALUE> featureList = new LinkedList();
       FEATURE_NAME name = nameIterator.next();
-      for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData){
+      int count = 0;
+      for (LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData) {
         valueSet.add(lf.getFeatureValue(name));
         featureList.add(lf.getFeatureValue(name));
         labelSet.add(lf.getLabel());
+        examples.put(count, name, lf.getFeatureValue(name));
+        count++;
       }
-      value_map.put(name, valueSet);
-      examples.put(name, featureList);
     }
-    System.out.println(labels);
+
+    System.out.println(examples);
+
 
   }
+
 
   /**
    * Predicts a label given a set of features.
