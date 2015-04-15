@@ -36,20 +36,39 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
    *          The training examples, where each example is a set of features and
    *          the label that should be predicted for those features.
    */
+  private int nodeCounter;
   private Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData;
-  private Map<FEATURE_NAME, Boolean> feature_names;
-  private Set<LABEL> labels;
+  private List<LABEL> labels;
+  private Map<FEATURE_NAME, Set<FEATURE_VALUE>> value_map;
+  private Map<FEATURE_NAME, List<FEATURE_VALUE>> examples;
+  private Node root;
+  private Set<FEATURE_NAME> features;
+  private Set<LABEL> labelSet;
   public DecisionTree(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData) {
-    this.trainingData = trainingData;
-    Iterator<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> it = trainingData.iterator();
-    while(it.hasNext()){
-      LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> next = it.next();
-      feature_names.addAll(next.getFeatureNames());
-      labels.add(next.getLabel());
+    value_map = new HashMap<>();
+    features = new HashSet();
+    examples = new HashMap<>();
+    labelSet = new HashSet();
+    labels = new LinkedList<>();
+    root = new Node(null);
+    for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData){
+      features.addAll(lf.getFeatureNames());
+      labels.add(lf.getLabel());
     }
-
-
-
+    Iterator<FEATURE_NAME> nameIterator = features.iterator();
+    while(nameIterator.hasNext()){
+      Set<FEATURE_VALUE> valueSet = new HashSet<>();
+      LinkedList<FEATURE_VALUE> featureList = new LinkedList();
+      FEATURE_NAME name = nameIterator.next();
+      for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData){
+        valueSet.add(lf.getFeatureValue(name));
+        featureList.add(lf.getFeatureValue(name));
+        labelSet.add(lf.getLabel());
+      }
+      value_map.put(name, valueSet);
+      examples.put(name, featureList);
+    }
+    System.out.println(labels);
 
   }
 
