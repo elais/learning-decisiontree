@@ -9,16 +9,13 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
 
     private Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> data;
     private boolean isUsed;
-    private Map<Double, Node> branches;
-    private LABEL label;
-    private FEATURE_NAME feature;
+    private Map<FEATURE_VALUE, Node> branches = new LinkedHashMap<>();
+    private LABEL label = null;
+    private FEATURE_NAME feature = null;
     private int nodeID;
 
 
     public Node(int nodeCounter){
-        label = null;
-        branches = new LinkedHashMap<>();
-        feature = null;
         nodeID = nodeCounter;
 
     }
@@ -28,11 +25,13 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
     }
 
 
+
+
     public int getNodeID() {
         return nodeID;
     }
     public LABEL getLabel() {
-        return label;
+        return this.label;
     }
     public void setLabel(LABEL l) {
         label = l;
@@ -40,15 +39,34 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
     public void setFeature(FEATURE_NAME bestFeature) {
         feature = bestFeature;
     }
-    public void addBranch(double value, Node node) {
+    public void addBranch(FEATURE_VALUE value, Node node) {
         branches.put(value, node);
     }
-    public Map<Double, Node> getBranches() {
+    public Map<FEATURE_VALUE, Node> getBranches() {
         return branches;
     }
-    public FEATURE_NAME getFeature() {
-        return feature;
+    public FEATURE_NAME getFeature(){
+        return this.feature;
     }
+
+    public LABEL makeDecision(Features<FEATURE_NAME, FEATURE_VALUE> features, FEATURE_NAME name){
+        LABEL decision;
+        decision = null;
+        if(branches.isEmpty()){
+            return getLabel();
+        } else {
+            for(FEATURE_VALUE branch : branches.keySet()){
+                FEATURE_VALUE value = features.getFeatureValue(name);
+                if(branch == value){
+                    Node childNode = branches.get(branch);
+                    System.out.println("here");
+                    decision = (LABEL) childNode.makeDecision(features, childNode.getFeature());
+                }
+            }
+        }
+        return decision;
+    }
+
 
 
 }

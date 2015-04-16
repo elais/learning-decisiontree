@@ -1,7 +1,6 @@
 package edu.uab.cis.learning.decisiontree;
 
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
+import com.google.common.collect.*;
 
 import java.util.*;
 
@@ -40,44 +39,37 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
    *          the label that should be predicted for those features.
    */
   private int nodeCounter;
+  private Node _root;
   private Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData;
-  private List<LABEL> labels;
-  private Map<FEATURE_NAME, Set<FEATURE_VALUE>> value_map;
-  private Node root;
-  private Set<FEATURE_NAME> features;
-  private Set<LABEL> labelSet;
-  private Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples;
   public DecisionTree(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData) {
-    value_map = new HashMap<>();
-    features = new HashSet();
-    labelSet = new HashSet();
-    labels = new LinkedList<>();
-    root = new Node(null);
+    //Multimap<FEATURE_NAME,FEATURE_VALUE> examples = HashMultimap.create();
+    Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features = new LinkedHashMap<>();
+    Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples = HashBasedTable.create();
+    List<LABEL> labels = new ArrayList();
 
 
-
+    int count = 0;
     for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData){
-      features.addAll(lf.getFeatureNames());
       labels.add(lf.getLabel());
-    }
-
-    examples = HashBasedTable.create(labels.size(), features.size());
-    Iterator<FEATURE_NAME> nameIterator = features.iterator();
-    while(nameIterator.hasNext()) {
-      Set<FEATURE_VALUE> valueSet = new HashSet<>();
-      LinkedList<FEATURE_VALUE> featureList = new LinkedList();
-      FEATURE_NAME name = nameIterator.next();
-      int count = 0;
-      for (LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData) {
-        valueSet.add(lf.getFeatureValue(name));
-        featureList.add(lf.getFeatureValue(name));
-        labelSet.add(lf.getLabel());
+      Iterator<FEATURE_NAME> it = lf.getFeatureNames().iterator();
+      while(it.hasNext()){
+        FEATURE_NAME name = it.next();
+        if(!features.containsKey(name)){
+          Multiset<FEATURE_VALUE> v = LinkedHashMultiset.create();
+          v.add(lf.getFeatureValue(name));
+          features.put(name,v);
+        } else {
+          Multiset<FEATURE_VALUE> v = features.get(name);
+          v.add(lf.getFeatureValue(name));
+          features.put(name, v);
+        }
         examples.put(count, name, lf.getFeatureValue(name));
-        count++;
       }
+      count++;
     }
-
-    System.out.println(examples);
+    ID3 id3 = new ID3();
+    _root = id3.buildTree(examples, labels, features);
+    System.out.println(id3.get_nodeCounter());
 
 
   }
@@ -107,23 +99,10 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
    * @return The predicted label.
    */
   public LABEL classify(Features<FEATURE_NAME, FEATURE_VALUE> features) {
-    // TODO
-    return null;
+
+    System.out.println(_root.getFeature());
+    return (LABEL) _root.makeDecision(features, _root.getFeature());
   }
 
-  public Double calculateEntropy(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> data){
-    double entropy = 0;
-
-    if(data.size() == 0){
-      //do nothing
-      return 0.0;
-    }
-
-
-
-
-    return null;
-
-  }
 }
 
