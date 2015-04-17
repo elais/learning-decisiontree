@@ -44,6 +44,10 @@ public class ID3 <LABEL, FEATURE_NAME, FEATURE_VALUE>{
                         count++;
                     }
                 }
+                System.out.println(examples);
+                System.out.println(labels);
+                System.out.println(childTable);
+                System.out.println(newLabels);
                 childTable.column(bestFeature).clear();
                 if(childTable.isEmpty()){
                     Node leafNode = new Node(_nodeCounter);
@@ -102,7 +106,6 @@ public class ID3 <LABEL, FEATURE_NAME, FEATURE_VALUE>{
                 value_summation.put(colPos.get(i), tempSet);
             }
         }
-        System.out.println(value_summation);
         double value = 0;
         for(FEATURE_VALUE val : value_summation.keySet()){
             Iterator it = value_summation.get(val).iterator();
@@ -112,7 +115,7 @@ public class ID3 <LABEL, FEATURE_NAME, FEATURE_VALUE>{
                     * calculateEntropy(valueLabels);
         }
         double gain = calculateLabelEntropy(labelOccurrences);
-        gain += value;
+        gain -= value;
         return gain;
     }
 
