@@ -51,6 +51,6 @@ public class DecisionTreeTest {
     // train the classifier
     DecisionTree<String, Integer, String> classifier = new DecisionTree<>(trainingData);
     // test that the classifier split on something
-    Assert.assertEquals("sunburned", classifier.classify(Features.of("dana", "blonde", "average", "light", "yes")));
+    Assert.assertEquals("none", classifier.classify(Features.of("john", "brown", "average", "heavy", "no")));
   }
 }

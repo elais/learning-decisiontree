@@ -31,7 +31,7 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
         return nodeID;
     }
     public LABEL getLabel() {
-        return this.label;
+        return label;
     }
     public void setLabel(LABEL l) {
         label = l;
@@ -52,6 +52,7 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
     public LABEL makeDecision(Features<FEATURE_NAME, FEATURE_VALUE> features, FEATURE_NAME name){
         LABEL decision;
         decision = null;
+        //System.out.println(branches);
         if(branches.isEmpty()){
             return getLabel();
         } else {
@@ -59,7 +60,6 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
                 FEATURE_VALUE value = features.getFeatureValue(name);
                 if(branch == value){
                     Node childNode = branches.get(branch);
-                    System.out.println("here");
                     decision = (LABEL) childNode.makeDecision(features, childNode.getFeature());
                 }
             }

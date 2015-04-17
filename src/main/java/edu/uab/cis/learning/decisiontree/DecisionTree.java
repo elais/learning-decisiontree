@@ -69,7 +69,7 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
     }
     ID3 id3 = new ID3();
     _root = id3.buildTree(examples, labels, features);
-    System.out.println(id3.get_nodeCounter());
+    //System.out.println(id3.get_nodeCounter());
 
 
   }
@@ -100,7 +100,7 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
    */
   public LABEL classify(Features<FEATURE_NAME, FEATURE_VALUE> features) {
 
-    System.out.println(_root.getFeature());
+    //System.out.println(_root.getLabel());
     return (LABEL) _root.makeDecision(features, _root.getFeature());
   }
 

@@ -24,68 +24,63 @@ public class ID3 <LABEL, FEATURE_NAME, FEATURE_VALUE>{
     private Node runID3(Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples, List<LABEL> labels ,Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
         Node root = new Node(_nodeCounter);
         _nodeCounter++;
-        if(features.isEmpty() || allExamplesPositive(labels))
-            root.setLabel(labels.iterator().next());
+        if (features.isEmpty() || allExamplesPositive(labels)){
+            root.setLabel(labels.get(0));
+            //System.out.println(root.getLabel());
+        }
         else{
             FEATURE_NAME bestFeature = findBestFeature(examples, labels, features);
-            Multiset<FEATURE_VALUE> forLater = features.get(bestFeature);
             root.setFeature(bestFeature);
-            System.out.println(bestFeature);
+            //System.out.println(bestFeature);
             Iterator<FEATURE_VALUE> it = features.get(bestFeature).elementSet().iterator();
             while(it.hasNext()){
                 FEATURE_VALUE value = it.next();
                 Table<Integer, FEATURE_NAME, FEATURE_VALUE> trimmedExamples = HashBasedTable.create();
                 List<LABEL> newLabels = new ArrayList<>();
+                int count = 0;
+                Set<FEATURE_NAME> feats = features.keySet();
                 for(int i = 0; i < examples.rowKeySet().size(); i++){
-                    if(examples.row(i).containsValue(value)) {
-                        Iterator<FEATURE_NAME> it2 = features.keySet().iterator();
-                        while (it2.hasNext()) {
-                            FEATURE_NAME name = it2.next();
-                            if (name != bestFeature) {
-                                trimmedExamples.put(i, name, examples.row(i).get(name));
-                                newLabels.add(labels.get(i));
-                            }
+                    if(examples.row(i).containsValue(value)){
+                        for(FEATURE_NAME feat : feats){
+                            trimmedExamples.put(count, feat, examples.get(i, feat));
                         }
+                        newLabels.add(labels.get(i));
+                        count++;
                     }
                 }
-                System.out.println(trimmedExamples);
-                if(trimmedExamples.rowKeySet().size() < 1){
+                if(trimmedExamples.rowKeySet().isEmpty()){
                     Node leafNode = new Node(_nodeCounter);
                     _nodeCounter++;
-                    Multiset<LABEL> labelOccurrences = LinkedHashMultiset.create(newLabels);
-                    double mcv = 0;
-                    LABEL bestLabel = null;
-                    Iterator<LABEL> another = labelOccurrences.elementSet().iterator();
-                    while(it.hasNext()){
-                        LABEL nextLabel = another.next();
-                        if(labelOccurrences.count(nextLabel) > mcv) {
-                            mcv = labelOccurrences.count(nextLabel);
-                            bestLabel = nextLabel;
-                        }
-                    }
+                    Multiset<LABEL> mcv = HashMultiset.create(newLabels);
+                    System.out.println(mcv);
+                    mcv = Multisets.copyHighestCountFirst(mcv);
+                    LABEL bestLabel = mcv.entrySet().iterator().next().getElement();
+                    //System.out.println(bestLabel);
                     leafNode.setLabel(bestLabel);
                     root.addBranch(value, leafNode);
                 } else {
-                    features.remove(bestFeature);
-                    root.addBranch(value, runID3(trimmedExamples, newLabels, features));
-                    //features.put(bestFeature, forLater);
+                    trimmedExamples.column(bestFeature).clear();
+                    Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> secondFeatures = features;
+                    secondFeatures.remove(bestFeature);
+                    root.addBranch(value, runID3(trimmedExamples, newLabels, secondFeatures));
                 }
             }
         }
-        return null;
+        return root;
     }
 
     private Boolean allExamplesPositive(List<LABEL> labels){
         Multiset<LABEL> labelOccurrences = LinkedHashMultiset.create(labels);
-        if(labelOccurrences.elementSet().size() < 2){
+        if(labelOccurrences.elementSet().size() == 1){
             return true;
         } else
             return false;
     }
 
     private FEATURE_NAME findBestFeature(Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples, List<LABEL> labels, Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
-        double bestGain = -10;
+        double bestGain = Double.NEGATIVE_INFINITY;
         FEATURE_NAME bestFeature = null;
+
 
         for (FEATURE_NAME name : features.keySet()) {
             Map<Integer, FEATURE_VALUE> colPos = examples.column(name);
@@ -107,68 +102,70 @@ public class ID3 <LABEL, FEATURE_NAME, FEATURE_VALUE>{
         Map<FEATURE_VALUE, Multiset<LABEL>> value_summation = new LinkedHashMap<>();
         Multiset<LABEL> labelOccurrences = LinkedHashMultiset.create(labels);
         double totalLabelOccurrence = labelOccurrences.size();
-
         //compares labels to feature values, puts results in value_summation
         for(int i = 0; i < labels.size(); i++){
             if(!value_summation.containsKey(colPos.get(i))){
-                Multiset<LABEL> l = HashMultiset.create();
-                l.add(labels.get(i));
-                value_summation.put(colPos.get(i), l);
-            } else{
-                Multiset<LABEL> l = value_summation.get(colPos.get(i));
-                l.add(labels.get(i));
-                value_summation.put(colPos.get(i), l);
+                Multiset<LABEL> tempSet = LinkedHashMultiset.create();
+                tempSet.add(labels.get(i));
+                value_summation.put(colPos.get(i), tempSet);
+            }else {
+                Multiset<LABEL> tempSet = value_summation.get(colPos.get(i));
+                tempSet.add(labels.get(i));
+                value_summation.put(colPos.get(i), tempSet);
             }
         }
-
         double value = 0;
-        for (FEATURE_VALUE val : value_summation.keySet()) {
-            Iterator<LABEL> l = value_summation.get(val).elementSet().iterator();
-            while (l.hasNext()) {
-                LABEL lab = l.next();
-                double valSum = value_summation.get(val).count(lab);
-                double lO = labelOccurrences.size();
-                value += (-1) * (valSum / lO) *
-                        calculateEntropy(feature_values);
-            }
+        for(FEATURE_VALUE val : value_summation.keySet()){
+            Iterator it = value_summation.get(val).iterator();
+            Multiset<LABEL> valueLabels = value_summation.get(val);
+            double valueOccurrences = valueLabels.size();
+            //System.out.println(valueOccurrences);
+            value -= -(valueOccurrences / totalLabelOccurrence) * calculateEntropy(valueLabels);
         }
         double gain = calculateLabelEntropy(labelOccurrences);
-        gain += value;
-        System.out.println(gain);
+        gain -= value;
         return gain;
     }
 
-    private double calculateLabelEntropy(Multiset<LABEL> labelOccurences) {
-        if(labelOccurences.size() == 0){
+    private double calculateLabelEntropy(Multiset<LABEL> labels) {
+        double totalLabels = labels.size();
+
+        if(totalLabels == 0){
             return 0;
         }
-        if(labelOccurences.elementSet().size() < 2)
+        if(labels.elementSet().size() == 1)
             return 0;
 
         double entropy = 0;
-        for (LABEL feature_value : labelOccurences.elementSet()) {
-            double count = labelOccurences.count(feature_value);
-            double totalOccurrence = labelOccurences.size();
-            entropy +=  (-1) * (count/ totalOccurrence)
-                    * (log10(count/ totalOccurrence) / log10(2));
+        for(LABEL label : labels.elementSet()) {
+            double truths = labels.count(label);
+            if(truths != 0)
+                entropy -= (truths / totalLabels) * log2((truths / totalLabels));
+
         }
+        //System.out.println(entropy);
         return entropy;
     }
 
-    private double calculateEntropy(Multiset<FEATURE_VALUE> feature_values) {
-        if(feature_values.size() == 0){
+    private double calculateEntropy(Multiset<LABEL> valueLabels) {
+        double featureLabels = valueLabels.size();
+        Multiset<LABEL> labels = valueLabels;
+
+
+        if(featureLabels == 0){
             return 0;
         }
-        if(feature_values.elementSet().size() < 2)
+        if(labels.elementSet().size() == 1) {
             return 0;
+        }
+
 
         double entropy = 0;
-        for (FEATURE_VALUE feature_value : feature_values.elementSet()) {
-            double count = feature_values.count(feature_value);
-            double totalOccurrence = feature_values.size();
-
-            entropy += (-1) * (count / totalOccurrence) * (log10((count / totalOccurrence)) / log10(2));
-            //System.out.println(entropy);
+        for(LABEL label : labels.elementSet()) {
+            double v = labels.count(label);
+            //System.out.println(featureLabels);
+            if(v != 0)
+                entropy -= (v/ featureLabels) * log2((v/ featureLabels));
         }
         return entropy;
     }
