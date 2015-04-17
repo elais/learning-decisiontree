@@ -52,18 +52,15 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
     public LABEL makeDecision(Features<FEATURE_NAME, FEATURE_VALUE> features, FEATURE_NAME name){
         LABEL decision;
         decision = null;
-        //System.out.println(branches);
         if(branches.isEmpty()){
             return getLabel();
         } else {
-            for(FEATURE_VALUE branch : branches.keySet()){
                 FEATURE_VALUE value = features.getFeatureValue(name);
-                if(branch == value){
-                    Node childNode = branches.get(branch);
-                    decision = (LABEL) childNode.makeDecision(features, childNode.getFeature());
+                if(branches.containsKey(value)){
+                    Node childNode = branches.get(value);
+                    decision = (LABEL)childNode.makeDecision(features, childNode.getFeature());
                 }
             }
-        }
         return decision;
     }
 
