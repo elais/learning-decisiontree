@@ -4,6 +4,8 @@ import com.google.common.collect.*;
 
 import java.util.*;
 
+import static com.google.common.math.DoubleMath.log2;
+
 /**
  * A decision tree classifier.
  *
@@ -38,42 +40,81 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
    *          The training examples, where each example is a set of features and
    *          the label that should be predicted for those features.
    */
-  private int nodeCounter;
-  private Node _root;
+  private int isLeaf;
+  private FEATURE_NAME bestFeature;
   private Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData;
+  private Map<FEATURE_VALUE, DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE>> tree;
+  LABEL return_label;
+
   public DecisionTree(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> trainingData) {
+    /*
     //Multimap<FEATURE_NAME,FEATURE_VALUE> examples = HashMultimap.create();
-    Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features = new LinkedHashMap<>();
+    myFeatures = new LinkedHashMap<>();
     Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples = HashBasedTable.create();
     List<LABEL> labels = new ArrayList();
 
 
-    int count = 0;
-    for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData){
-      labels.add(lf.getLabel());
-      Iterator<FEATURE_NAME> it = lf.getFeatureNames().iterator();
-      while(it.hasNext()){
-        FEATURE_NAME name = it.next();
-        if(!features.containsKey(name)){
-          Multiset<FEATURE_VALUE> v = LinkedHashMultiset.create();
-          v.add(lf.getFeatureValue(name));
-          features.put(name,v);
-        } else {
-          Multiset<FEATURE_VALUE> v = features.get(name);
-          v.add(lf.getFeatureValue(name));
-          features.put(name, v);
-        }
-        examples.put(count, name, lf.getFeatureValue(name));
-      }
-      count++;
-    }
-
     ID3 id3 = new ID3();
-    _root = id3.buildTree(examples, labels, features);
-
+    _root = id3.buildTree(trainingData, myFeatures);
+  */
+    this(trainingData, new LinkedHashSet<FEATURE_NAME>());
 
   }
 
+  private DecisionTree(Collection<LabeledFeatures<LABEL,FEATURE_NAME,FEATURE_VALUE>> trainingData, Set<FEATURE_NAME> used_features) {
+    tree = new LinkedHashMap<>();
+
+    List<FEATURE_NAME> myFeatures = new ArrayList<>();
+    for(LabeledFeatures<LABEL,FEATURE_NAME,FEATURE_VALUE> labeled_feature : trainingData)
+    {
+      for(FEATURE_NAME fn : labeled_feature.getFeatureNames())
+      {
+        myFeatures.add(fn);
+      }
+    }
+    myFeatures.removeAll(used_features);
+
+    Multiset<LABEL> labels = HashMultiset.create();
+    for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : trainingData)
+    {
+      labels.add(lf.getLabel());
+    }
+    double max = Double.NEGATIVE_INFINITY;
+    LABEL max_label = null;
+    for (LABEL label : labels.elementSet())
+    {
+      if (labels.count(label) > max)
+      {
+        max = labels.count(label);
+        max_label = label;
+      }
+    }
+    return_label = max_label;
+
+    isLeaf = 0;
+    if ( myFeatures.isEmpty()|| labels.size() < 2){
+      isLeaf=1; //true
+      return;
+    }
+    else { isLeaf = 0; }
+
+
+    bestFeature = findBestFeature(trainingData, myFeatures);
+    Map<FEATURE_VALUE, List<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>>> branchmap = new LinkedHashMap<>();
+      for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> e : trainingData)
+      {
+        if(!branchmap.containsKey(e.getFeatureValue(bestFeature)))
+        {
+          branchmap.put(e.getFeatureValue(bestFeature), new ArrayList<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>>());
+        }
+        branchmap.get(e.getFeatureValue(bestFeature)).add(e);
+      }
+      used_features.add(bestFeature);
+      for(FEATURE_VALUE value : branchmap.keySet())
+      {
+        tree.put(value, new DecisionTree<>( branchmap.get(value), new LinkedHashSet<FEATURE_NAME>(used_features)));
+      }
+  }
 
   /**
    * Predicts a label given a set of features.
@@ -98,10 +139,90 @@ public class DecisionTree<LABEL, FEATURE_NAME, FEATURE_VALUE> {
    *          The features for which a label is to be predicted.
    * @return The predicted label.
    */
-  public LABEL classify(Features<FEATURE_NAME, FEATURE_VALUE> features) {
+  public LABEL classify(Features<FEATURE_NAME, FEATURE_VALUE> features)
+  {
+    if(isLeaf == 1) { return return_label; }
+    if (features.getFeatureNames().contains(bestFeature) && tree.containsKey(features.getFeatureValue(bestFeature))) {
+      return tree.get(features.getFeatureValue(bestFeature)).classify(features);
+    }
+    else { return return_label; }
 
-    //System.out.println(_root.getLabel());
-    return (LABEL) _root.makeDecision(features, _root.getFeature());
+  }
+
+  private FEATURE_NAME findBestFeature(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> examples, List<FEATURE_NAME> features) {
+    double bestGain = Double.NEGATIVE_INFINITY;
+    FEATURE_NAME bestFeature = null;
+
+    Multiset<LABEL> totalLabelCount = LinkedHashMultiset.create();
+    for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> e : examples)
+    {
+      totalLabelCount.add(e.getLabel());
+    }
+
+    for (FEATURE_NAME name : features)
+    {
+      Map<FEATURE_VALUE, Multiset<LABEL>> feature_value_label_map = new LinkedHashMap<>();
+      for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> e : examples)
+      {
+        FEATURE_VALUE value = e.getFeatureValue(name);
+        if(!feature_value_label_map.containsKey(value)){
+          Multiset<LABEL> label_value_tracker = LinkedHashMultiset.create();
+          feature_value_label_map.put(value, label_value_tracker);
+        }
+        feature_value_label_map.get(value).add(e.getLabel());
+      }
+      double gain = calculateGain(examples.size(), totalLabelCount, feature_value_label_map);
+      if (gain >= bestGain) {
+        bestGain = gain;
+        bestFeature = name;
+      }
+    }
+    for(FEATURE_NAME name : features){
+      if(name == bestFeature) {
+        return bestFeature;
+      }
+    }
+    return null;
+  }
+
+  private double calculateGain(double exampleSize, Multiset<LABEL> totalLabelCount, Map<FEATURE_VALUE, Multiset<LABEL>> value_map) {
+
+
+    double value = 0;
+    for(FEATURE_VALUE val : value_map.keySet()){
+      double value_label_sum = 0.0;
+      if(value_map.containsKey(val)){
+        for(LABEL label : value_map.get(val).elementSet()){
+          value_label_sum += (double) value_map.get(val).count(label);
+        }
+      }
+      value += (value_label_sum/exampleSize) * calculateEntropy(value_label_sum, value_map, val);
+
+    }
+
+    double gain = calculateLabelEntropy(totalLabelCount, exampleSize) - value;
+    return gain;
+  }
+
+  private double calculateLabelEntropy(Multiset<LABEL> labels, double exampleSize)
+  {
+    double entropy = 0;
+    for(LABEL label : labels.elementSet())
+    {
+      entropy -= ( labels.count(label)/exampleSize ) * log2(labels.count(label)/exampleSize);
+    }
+    return entropy;
+  }
+
+  private double calculateEntropy(double value_label_sum, Map<FEATURE_VALUE, Multiset<LABEL>> value_map, FEATURE_VALUE val) {
+
+    double entropy = 0;
+    for(LABEL label : value_map.get(val).elementSet()) {
+      double v = value_map.get(val).count(label);
+      if(v != 0)
+        entropy -=  (v/ value_label_sum) * log2((v/ value_label_sum));
+    }
+    return entropy;
   }
 
 }

@@ -1,7 +1,12 @@
 package edu.uab.cis.learning.decisiontree;
+
 import com.google.common.collect.*;
 import com.google.common.math.DoubleMath;
+import edu.uab.cis.learning.decisiontree.LabeledFeatures;
+import edu.uab.cis.learning.decisiontree.Node;
+
 import java.util.*;
+
 import static com.google.common.math.DoubleMath.log2;
 import static java.lang.Math.*;
 
@@ -16,135 +21,130 @@ public class ID3 <LABEL, FEATURE_NAME, FEATURE_VALUE>{
         _nodeCounter = 0;
     }
 
-    public Node buildTree(Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples, List<LABEL> labels,Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
-        Node root = runID3(examples, labels, features);
+    public Node buildTree(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> examples,Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
+        Node root = runID3(examples, features);
         return root;
     }
 
-    private Node runID3(Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples, List<LABEL> labels ,Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
+    private Node runID3(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> examples, Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
         Node root = new Node(_nodeCounter);
         _nodeCounter++;
-        Set<LABEL> s= new HashSet<>(labels);
-        if ( features.isEmpty()|| s.size() == 1){
-            root.setLabel(s.iterator().next());
+        Multiset<LABEL> labels = HashMultiset.create();
+        for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> lf : examples)
+        {
+            labels.add(lf.getLabel());
+        }
+        double max = Double.NEGATIVE_INFINITY;
+        LABEL max_label = null;
+        for (LABEL label : labels.elementSet())
+        {
+            if (labels.count(label) > max)
+            {
+                max = labels.count(label);
+                max_label = label;
+            }
+        }
+        max_label = max_label;
+        if ( features.isEmpty()|| labels.size() < 2){
+            root.setLabel(max_label);
+            return root;
         }
         else{
-            FEATURE_NAME bestFeature = findBestFeature(examples, labels, features);
+            System.out.println(features);
+            FEATURE_NAME bestFeature = findBestFeature(examples, features);
             root.setFeature(bestFeature);
-            for(FEATURE_VALUE value : features.get(bestFeature)){
-                Table<Integer, FEATURE_NAME, FEATURE_VALUE> childTable = HashBasedTable.create();
-                List<LABEL> newLabels = new ArrayList<>();
-                int count = 0;
-                for(int i = 0; i < examples.rowKeySet().size(); i++ ){
-                    if(examples.get(i, bestFeature) == value){
-                        for(FEATURE_NAME column : examples.columnKeySet()){
-                            childTable.put(count, column, examples.get(count, column) );
-                        }
-                        newLabels.add(labels.get(i));
-                        count++;
-                    }
+            Map<FEATURE_VALUE, List<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>>> branchmap = new LinkedHashMap<>();
+            for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> e : examples)
+            {
+                if(!branchmap.containsKey(e.getFeatureValue(bestFeature)))
+                {
+                    branchmap.put(e.getFeatureValue(bestFeature), new ArrayList<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>>());
                 }
-                System.out.println(examples);
-                System.out.println(labels);
-                System.out.println(childTable);
-                System.out.println(newLabels);
-                childTable.column(bestFeature).clear();
-                if(childTable.isEmpty()){
-                    Node leafNode = new Node(_nodeCounter);
-                    _nodeCounter++;
-                    Multiset<LABEL> ladels = HashMultiset.create(labels);
-                    LABEL mvp = Multisets.copyHighestCountFirst(ladels).iterator().next();
-                    leafNode.setLabel(mvp);
-                    root.addBranch(value, leafNode);
-                } else {
-                    Multiset<FEATURE_VALUE> save = features.remove(bestFeature);
-                    root.addBranch(value, runID3(childTable, newLabels, features));
-                    features.put(bestFeature, save);
-                }
+                branchmap.get(e.getFeatureValue(bestFeature)).add(e);
+            }
+            for(FEATURE_VALUE value : branchmap.keySet())
+            {
+                _nodeCounter++;
+                Multiset<FEATURE_VALUE> save = features.remove(bestFeature);
+                root.addBranch(value, runID3(branchmap.get(value), features));
             }
         }
         return root;
 
     }
 
-    private FEATURE_NAME findBestFeature(Table<Integer, FEATURE_NAME, FEATURE_VALUE> examples, List<LABEL> labels, Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
+    private FEATURE_NAME findBestFeature(Collection<LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE>> examples, Map<FEATURE_NAME, Multiset<FEATURE_VALUE>> features) {
         double bestGain = Double.NEGATIVE_INFINITY;
         FEATURE_NAME bestFeature = null;
 
+        Multiset<LABEL> totalLabelCount = LinkedHashMultiset.create();
+        for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> e : examples)
+        {
+            totalLabelCount.add(e.getLabel());
+        }
 
-        for (FEATURE_NAME name : features.keySet()) {
-            Map<Integer, FEATURE_VALUE> colPos = examples.column(name);
-            double gain = calculateGain(labels, colPos, features.get(name));
+        for (FEATURE_NAME name : features.keySet())
+        {
+            Map<FEATURE_VALUE, Multiset<LABEL>> feature_value_label_map = new LinkedHashMap<>();
+            for(LabeledFeatures<LABEL, FEATURE_NAME, FEATURE_VALUE> e : examples)
+            {
+                FEATURE_VALUE value = e.getFeatureValue(name);
+                if(!feature_value_label_map.containsKey(value)){
+                    Multiset<LABEL> label_value_tracker = LinkedHashMultiset.create();
+                    feature_value_label_map.put(value, label_value_tracker);
+                }
+                feature_value_label_map.get(value).add(e.getLabel());
+            }
+            double gain = calculateGain(examples.size(), totalLabelCount, feature_value_label_map);
             if (gain >= bestGain) {
                 bestGain = gain;
                 bestFeature = name;
-
             }
         }
         for(FEATURE_NAME name : features.keySet()){
-            if(name == bestFeature)
+            if(name == bestFeature) {
                 return bestFeature;
+            }
         }
         return null;
     }
 
-    private double calculateGain(List<LABEL> labels, Map<Integer, FEATURE_VALUE> colPos, Multiset<FEATURE_VALUE> feature_values) {
+    private double calculateGain(double exampleSize, Multiset<LABEL> totalLabelCount, Map<FEATURE_VALUE, Multiset<LABEL>> value_map) {
 
-        Map<FEATURE_VALUE, Multiset<LABEL>> value_summation = new LinkedHashMap<>();
-        Multiset<LABEL> labelOccurrences = LinkedHashMultiset.create(labels);
-        double totalLabelOccurrence = labelOccurrences.size();
 
-        //compares labels to feature values, puts results in value_summation
-        for(int i = 0; i < labels.size(); i++){
-            if(!value_summation.containsKey(colPos.get(i))){
-                Multiset<LABEL> tempSet = LinkedHashMultiset.create();
-                tempSet.add(labels.get(i));
-                value_summation.put(colPos.get(i), tempSet);
-            }else {
-                Multiset<LABEL> tempSet = value_summation.get(colPos.get(i));
-                tempSet.add(labels.get(i));
-                value_summation.put(colPos.get(i), tempSet);
-            }
-        }
         double value = 0;
-        for(FEATURE_VALUE val : value_summation.keySet()){
-            Iterator it = value_summation.get(val).iterator();
-            Multiset<LABEL> valueLabels = value_summation.get(val);
-            double valueOccurrences = valueLabels.size();
-            value -=  (valueOccurrences / totalLabelOccurrence)
-                    * calculateEntropy(valueLabels);
+        for(FEATURE_VALUE val : value_map.keySet()){
+            double value_label_sum = 0.0;
+            if(value_map.containsKey(val)){
+                for(LABEL label : value_map.get(val).elementSet()){
+                    value_label_sum += (double) value_map.get(val).count(label);
+                }
+            }
+            value += (value_label_sum/exampleSize) * calculateEntropy(value_label_sum, value_map, val);
+
         }
-        double gain = calculateLabelEntropy(labelOccurrences);
-        gain -= value;
+
+        double gain = calculateLabelEntropy(totalLabelCount, exampleSize) - value;
         return gain;
     }
 
-    private double calculateLabelEntropy(Multiset<LABEL> labels) {
-        double totalLabels = labels.size();
-
-
+    private double calculateLabelEntropy(Multiset<LABEL> labels, double exampleSize)
+    {
         double entropy = 0;
-        for(LABEL label : labels.elementSet()) {
-            double truths = labels.count(label);
-            if(truths != 0)
-                entropy -=  (truths / totalLabels) * log2((truths / totalLabels));
-
+        for(LABEL label : labels.elementSet())
+        {
+            entropy -= ( labels.count(label)/exampleSize ) * log2(labels.count(label)/exampleSize);
         }
         return entropy;
     }
 
-    private double calculateEntropy(Multiset<LABEL> valueLabels) {
-        double featureLabels = valueLabels.size();
-        Multiset<LABEL> labels = valueLabels;
-
-
-
+    private double calculateEntropy(double value_label_sum, Map<FEATURE_VALUE, Multiset<LABEL>> value_map, FEATURE_VALUE val) {
 
         double entropy = 0;
-        for(LABEL label : labels.elementSet()) {
-            double v = labels.count(label);
+        for(LABEL label : value_map.get(val).elementSet()) {
+            double v = value_map.get(val).count(label);
             if(v != 0)
-                entropy -=  (v/ featureLabels) * log2((v/ featureLabels));
+                entropy -=  (v/ value_label_sum) * log2((v/ value_label_sum));
         }
         return entropy;
     }
@@ -153,7 +153,4 @@ public class ID3 <LABEL, FEATURE_NAME, FEATURE_VALUE>{
         return _nodeCounter;
     }
 
-
-
 }
-

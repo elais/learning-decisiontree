@@ -57,8 +57,13 @@ public class Node<LABEL, FEATURE_NAME, FEATURE_VALUE>{
         } else {
                 FEATURE_VALUE value = features.getFeatureValue(name);
                 if(branches.containsKey(value)){
+                    System.out.println(value);
+                    System.out.println(branches.get(value));
                     Node childNode = branches.get(value);
                     decision = (LABEL)childNode.makeDecision(features, childNode.getFeature());
+                    //if(decision == null){
+                    //    return getLabel();
+                    //}
                 }
             }
         return decision;
